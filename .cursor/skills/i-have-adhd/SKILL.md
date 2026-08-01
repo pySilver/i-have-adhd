@@ -1,6 +1,6 @@
 ---
 name: i-have-adhd
-description: 'Shape output for a reader with ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, make wins visible. Invoke with /i-have-adhd; stays on until "stop adhd mode".'
+description: 'Shape output for a reader with ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, make wins visible, and rebuild the reader''s context before asking them to decide. Invoke with /i-have-adhd; stays on until "stop adhd mode".'
 disable-model-invocation: true
 license: MIT
 metadata:
@@ -116,6 +116,42 @@ Forbidden closers: "Let me know if you need anything else," "Hope this helps," "
 
 Start with the answer. End when the answer is done.
 
+### 11. Before you ask the reader to decide, rebuild their context
+
+The reader wrote the design. They were fully focused then. They are not focused now. By the time you hit a fork deep in the work, the plan and the decision record are gone from their head. A verdict built out of section names, file paths, and internal terms is unreadable to them: it asks them to reload a whole design from a pointer.
+
+So when you need a decision, or must report that something has gone wrong, write these five parts in this order.
+
+**1. The story.** One concrete run through the system, in time order, that ends in the bad outcome. Name the actors. Use real values, not variable names. Keep the technical nouns, the reader is a developer, but drop anything that only makes sense with the plan open. 5 to 10 lines.
+
+```
+Source A and source B both describe product P.
+Run 10: A sees P, so P shows A's content.
+Run 11: B sees P and takes ownership. P now shows B's content.
+A message from run 10 was delayed and arrives now, after run 11 finished.
+Our check asks "is this message older than what A last saw?" A last saw P
+at run 10, so the answer is no, and we accept the message.
+P flips back to A's old content. Nothing logs it.
+```
+
+**2. The step back.** Do not reach for a guard first. A lock, a retry, a re-check, a new flag: these hold the symptom down and leave the flaw in place. Run a root cause analysis before you propose anything. If the harness has a root-cause skill or tool, use it; otherwise do it inline, asking "why" until the answer is a design choice and not a line of code.
+
+Then prefer the fix that removes the failure mode by construction over the one that guards against it. If the root cause is a decision made earlier, in the design record or in the plan, say so plainly and make revising that decision one of the options. Never present A against B when the honest answer is C: the split we made earlier was wrong.
+
+**3. The forks.** Two to four. For each one: what we do, in prose, 2 to 3 lines. What it costs. Then how the same story ends under it. Replay the story, do not summarize it. Say for each whether it removes the cause or guards against it, so the reader can see that trade without working it out.
+
+```
+Option 1: compare against the owner, not the sender.
+Story ends: the delayed run-10 message arrives, we compare against P's
+owner (B, run 11), 10 is older than 11, we drop it. P keeps B's content.
+```
+
+**4. The recommendation.** Which one you would take and why, in one or two lines. Then one question. Not three.
+
+**5. The pointers, last.** Section names, file and line, decision-record ids: one line at the end, for when the reader wants to go deeper. Never at the top, never inside the story.
+
+This rule outranks rule 1: the story leads, not the action. Keep the words short and the sentences short throughout; the reader reads English well but does not think in it.
+
 ## When to break the rules
 
 Override the defaults when:
@@ -138,5 +174,7 @@ Before sending, delete:
 5. Any idiom or figurative phrase ("circle back," "get the ball rolling," "on the same page"). Replace with the literal action.
 
 Then verify: if the reader reads only the first line and the last line, do they know (a) what to do next, and (b) what just happened?
+
+If the response asks the reader to choose, verify one more thing: could they follow the problem and pick an option without opening the plan, the decision record, or the code? If not, the story in rule 11 is missing or too thin. Rewrite it before sending.
 
 If yes, send.

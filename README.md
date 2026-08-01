@@ -83,9 +83,48 @@ A skill for your coding assistant that stops it from burying the answer. Action 
 </table>
 
 
+## When it needs you to decide
+
+The hard moment is not a normal answer. It is hour six of work you approved days ago, when the agent hits a problem and wants a decision. You are no longer in context, and it hands you a wall of text pointing at plan sections you do not remember.
+
+Rule 11 changes what that moment looks like.
+
+<table>
+<tr>
+<td width="50%">
+
+## Before
+
+> Not merge-safe, three MAJOR defects. The stale-skip at `product_upsert.py:254` compares against the sighting resolved from the message identity, not the Product's owning sighting, contrary to plan §4.2 ("the owning sighting's `last_seen_generation`"). The cutover split the presence clock from the projection, so the `of=("self","presence")` lock no longer spans both owners. `_confirm_unhides` (`:590`) re-checks the barrier but not the generation. Options: take a distributed lock in the parser, or widen the row lock in the materializer.
+
+</td>
+
+<td width="50%">
+
+## After
+
+> Source A and source B both describe product P.
+> Run 10: A sees P, so P shows A's content.
+> Run 11: B sees P and takes ownership. P now shows B's content.
+> A message from run 10 was delayed and arrives now, after run 11 finished. Our check asks "is this older than what A last saw?" A last saw P at run 10, so we accept it. P flips back to A's old content. Nothing logs it.
+>
+> **Root cause:** we compare the message against the sender's clock, not the owner's. A lock hides this. It does not remove it.
+>
+> **Option 1 — compare against the owner.** Removes the cause. Story ends: the delayed message loses to run 11 and is dropped. P keeps B's content.
+> **Option 2 — lock the write.** Guards only. Story ends: same flip, just not concurrently.
+>
+> I would take option 1. Do you want the owner lookup in the parser or the materializer?
+>
+> Details: `product_upsert.py:254`, plan §4.2.
+
+</td>
+</tr>
+</table>
+
+
 ## The rules
 
-10 rules. Full text in [SKILL.md](./skills/i-have-adhd/SKILL.md).
+11 rules. Full text in [SKILL.md](./skills/i-have-adhd/SKILL.md).
 
 1. Lead with the next action.
 2. Number multi-step tasks.
@@ -97,6 +136,7 @@ A skill for your coding assistant that stops it from burying the answer. Action 
 8. Matter-of-fact errors.
 9. Cap lists at 5 items.
 10. No preamble. No recap. No closers.
+11. Rebuild my context before asking me to decide.
 
 ## Tune it
 
