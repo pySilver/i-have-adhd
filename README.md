@@ -106,16 +106,16 @@ Rule 11 changes what that moment looks like.
 > Source A and source B both describe product P.
 > Run 10: A sees P, so P shows A's content.
 > Run 11: B sees P and takes ownership. P now shows B's content.
-> A message from run 10 was delayed and arrives now, after run 11 finished. Our check asks "is this older than what A last saw?" A last saw P at run 10, so we accept it. P flips back to A's old content. Nothing logs it.
+> A message from run 10 was delayed and arrives now, after run 11 finished. Our check asks "is this older than what A last saw?" A last saw P at run 10, so we accept it. P flips back to A's old content. Nothing logs it. Derived from the plan, not reproduced.
 >
-> **Root cause:** we compare the message against the sender's clock, not the owner's. A lock hides this. It does not remove it.
+> I reached for a row lock first. It stops two writers racing; this one is not racing, it is late. The cause is that we compare against the sender's clock, not the owner's.
 >
-> **Option 1 — compare against the owner.** Removes the cause. Story ends: the delayed message loses to run 11 and is dropped. P keeps B's content.
-> **Option 2 — lock the write.** Guards only. Story ends: same flip, just not concurrently.
+> **1 — compare against the owner.** One extra lookup, half a day. Removes the cause. Story ends: the delayed message loses to run 11 and is dropped. P keeps B's content.
+> **2 — lock the write.** An hour, then contention tuning. Guards only. Story ends: same flip, just not concurrently.
 >
-> I would take option 1. Do you want the owner lookup in the parser or the materializer?
+> I would take 1. Reply `1` or `2`, or `more` and I expand either.
 >
-> Details: `product_upsert.py:254`, plan §4.2.
+> `product_upsert.py:254`, plan §4.2.
 
 </td>
 </tr>

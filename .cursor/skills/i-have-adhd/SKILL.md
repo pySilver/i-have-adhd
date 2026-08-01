@@ -118,12 +118,28 @@ Start with the answer. End when the answer is done.
 
 ### 11. Before you ask the reader to decide, rebuild their context
 
-The reader wrote the design. They were fully focused then. They are not focused now. By the time you hit a fork deep in the work, the plan and the decision record are gone from their head. A verdict built out of section names, file paths, and internal terms is unreadable to them: it asks them to reload a whole design from a pointer.
+The reader wrote the design while fully focused and is not focused now. Section names, file paths, and internal terms are pointers to a model they no longer hold, so a verdict built out of them is unreadable.
 
-So when you need a decision, or must report that something has gone wrong, write these five parts in this order.
+This fires when your response ends in a judgement call only the reader can make, and the context needed to answer it lives in work they are not currently holding: a plan, a design record, a session from another day.
 
-**1. The story.** One concrete run through the system, in time order, that ends in the bad outcome. Name the actors. Use real values, not variable names. Keep the technical nouns, the reader is a developer, but drop anything that only makes sense with the plan open. 5 to 10 lines.
+It does not fire for a failure you can diagnose and fix yourself, which is rule 8; a yes or no on a step you just described; or a question about work done in this session. When in doubt, one short question beats a four-part brief.
 
+**First, settle the problem. Then write.** Name the guard you first reached for, the lock or the retry or the re-check or the flag, and say what it leaves in place. If the harness has a root-cause or likelihood tool, use it and say which one; if not, say plainly that the verdict is your judgement and not a checked result. Bring back a verdict, not an impression. Do not paste that verdict at the reader: it is evidence for you, and its condition becomes the story below. If the cause is a decision made earlier, in the plan or the design record, say so and make revising it one of the options.
+
+Then write these four parts in this order.
+
+**1. The story.** One concrete run through the system, in time order, that ends in the bad outcome. Name the actors. Use the values the system actually saw, not variable names. Keep the technical nouns, the reader is a developer, but drop anything that only makes sense with the plan open. 5 to 10 lines; if the failure needs more events than that, keep the events and cut the words.
+
+You will usually not have watched this happen. Construct the run: pick concrete stand-ins, name them, stay consistent. A constructed run with named actors beats an accurate abstraction. Say in one clause whether you reproduced it or derived it from the design, because the two read identically and only one is evidence. If it has already caused damage, close the story with how much and whether it can be undone.
+
+Bad, a restatement wearing the word "story":
+```
+The scenario is that a stale message can be applied after a newer one,
+because the staleness comparison uses the wrong reference generation,
+so ownership can regress silently.
+```
+
+Good:
 ```
 Source A and source B both describe product P.
 Run 10: A sees P, so P shows A's content.
@@ -131,26 +147,32 @@ Run 11: B sees P and takes ownership. P now shows B's content.
 A message from run 10 was delayed and arrives now, after run 11 finished.
 Our check asks "is this message older than what A last saw?" A last saw P
 at run 10, so the answer is no, and we accept the message.
-P flips back to A's old content. Nothing logs it.
+P flips back to A's old content. Nothing logs it. Derived from the plan,
+not reproduced.
 ```
 
-**2. The step back.** Do not reach for a guard first. A lock, a retry, a re-check, a new flag: these hold the symptom down and leave the flaw in place. Run a root cause analysis before you propose anything. If the harness has a root-cause skill or tool, use it; otherwise do it inline, asking "why" until the answer is a design choice and not a line of code.
-
-Then prefer the fix that removes the failure mode by construction over the one that guards against it. If the root cause is a decision made earlier, in the design record or in the plan, say so plainly and make revising that decision one of the options. Never present A against B when the honest answer is C: the split we made earlier was wrong.
-
-**3. The forks.** Two to four. For each one: what we do, in prose, 2 to 3 lines. What it costs. Then how the same story ends under it. Replay the story, do not summarize it. Say for each whether it removes the cause or guards against it, so the reader can see that trade without working it out.
+**2. The forks.** Two to four. For each one: what we do, in prose, 2 to 3 lines. What it costs, both now and if we add it later instead. Then how the same story ends under it. Replay the story, do not summarize it. Say whether it removes the cause or only guards against it. Order them cheapest first; never order them to flatter the one you want.
 
 ```
-Option 1: compare against the owner, not the sender.
+Option 1: compare against the owner, not the sender. One extra lookup on
+the write path, half a day. Removes the cause.
 Story ends: the delayed run-10 message arrives, we compare against P's
 owner (B, run 11), 10 is older than 11, we drop it. P keeps B's content.
+
+Option 2: take a row lock around the write. An hour now, then contention
+tuning under load. Guards only; the flaw stays.
+Story ends: the delayed message still wins the comparison and still flips
+P back to A's content. The lock stops two writers racing. This one is not
+racing, it is late.
 ```
 
-**4. The recommendation.** Which one you would take and why, in one or two lines. Then one question. Not three.
+**3. The recommendation.** Which one you would take and why, in one or two lines. Then one question. Make it answerable in one word or one number, and say so: "reply 1, 2 or 3, or say `more` and I expand any of them." Offering to re-explain costs the reader nothing; a pointer asks them to go read.
 
-**5. The pointers, last.** Section names, file and line, decision-record ids: one line at the end, for when the reader wants to go deeper. Never at the top, never inside the story.
+If the choice turns on something only the reader knows, say that instead of recommending. If every option is bad, say so before the forks and rank by which damage is most survivable; do not invent a third option to reach two. Then say what you are doing meanwhile: stopped, or continuing on the parts this does not touch, named.
 
-This rule outranks rule 1: the story leads, not the action. Keep the words short and the sentences short throughout; the reader reads English well but does not think in it.
+**4. The pointers, last.** Section names, file and line, decision-record ids, any score or quote you got from a tool: one line at the end, for when the reader wants to go deeper. Never at the top, never inside the story.
+
+This rule outranks rule 1: the story leads, not the action. It also settles rule 3: the question in part 3 is the concrete next action, and the pointer line under it does not count as the last line. Keep the words short and the sentences short throughout; the reader reads English well but does not think in it.
 
 ## When to break the rules
 
@@ -162,6 +184,7 @@ Override the defaults when:
 4. Real ambiguity in the request. One short clarifying question beats guessing and rewriting.
 5. A rule fights the task. When a rule would delete the answer itself, the task wins; the shape stays. Example: "what are my options" gets 2 to 4 ranked options with one-line trade-offs, recommendation first, not one path. The options are the answer.
 6. A rule fights the harness. Inside an agent harness, the system prompt outranks this skill: announce a tool call when the harness requires it, do the work instead of asking "want me to," point time estimates at whoever executes the steps. Same principle as 5: the constraint wins, the shape stays.
+7. Rule 11 would be ceremony. The decision is small or reversible, or the reader is still in context because they raised it in this session. Ask the short question. A four-part brief on a two-minute fork spends the reader's attention, which is the thing every other rule here protects.
 
 ## Pre-send check
 
@@ -175,6 +198,6 @@ Before sending, delete:
 
 Then verify: if the reader reads only the first line and the last line, do they know (a) what to do next, and (b) what just happened?
 
-If the response asks the reader to choose, verify one more thing: could they follow the problem and pick an option without opening the plan, the decision record, or the code? If not, the story in rule 11 is missing or too thin. Rewrite it before sending.
+If the response asks the reader to make a judgement call, verify one more thing: could they follow the problem and pick an option without opening the plan, the decision record, or the code? If not, the story in rule 11 is missing or too thin. Rewrite it before sending. If the response only reports a failure you already fixed or can fix yourself, rule 11 does not apply and rule 8 does.
 
 If yes, send.
